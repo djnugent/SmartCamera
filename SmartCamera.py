@@ -3,7 +3,7 @@ import time
 import argparse
 import os
 import sc_config
-import sc_logger
+from sc_logger import sc_logger
 #startegies
 from PrecisionLand import PrecisionLand
 from RedBalloon import RedBalloon
