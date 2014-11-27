@@ -24,7 +24,7 @@ parser.add_argument('-c', '--camera', default=0, help="Select the camera index f
 parser.add_argument('-i', '--input', default=False, help='use a video filename as an input instead of a webcam')
 parser.add_argument('-f', '--file', default='Smart_Camera.cnf', help='load a config file other than the default')
 
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
 
 
