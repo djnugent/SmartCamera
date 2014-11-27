@@ -2,6 +2,8 @@ import logging
 import time
 import argparse
 import os
+from pymavlink import mavutil
+from droneapi.lib import VehicleMode, Location
 import sc_config
 from sc_logger import sc_logger
 #startegies
@@ -13,11 +15,10 @@ from OpticalFlow import OpticalFlow
 
 #parse arguments
 parser = argparse.ArgumentParser(description="Use image processing to peform visual navigation")
-#positional arguements
-parser.add_argument('Strategy', action="store", default='land', type=str,
+#optional arguments
+parser.add_argument('-S', '--Strategy', action="store", default='land', type=str,
  					choices=['land','redballoon','opticalflow'], 
  					help='Land: vision assisted landing \n redballoon: redballoon finder for AVC 2014 \n opticalflow: Optical flow using webcam')
-#optional arguments
 parser.add_argument('-c', '--camera', default=0, help="Select the camera index for opencv")
 parser.add_argument('-i', '--input', default=False, help='use a video filename as an input instead of a webcam')
 parser.add_argument('-f', '--file', default='Smart_Camera.cnf', help='load a config file other than the default')
