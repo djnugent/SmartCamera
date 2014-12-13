@@ -20,7 +20,9 @@ class SmartCameraVideo:
 
     def __init__(self):
 
-        
+        # get which camera we will use
+        self.camera_index = sc_config.config.get_integer('camera','index',0)
+
         # get image resolution
         self.img_width = sc_config.config.get_integer('camera','width',640)
         self.img_height = sc_config.config.get_integer('camera','height',480)
@@ -218,7 +220,7 @@ class SmartCameraVideo:
         #self.get_camera(0)
 
         # start background process
-        self.start_capture(1)
+        self.start_capture(self.camera_index)
 
         #did we start background capture
         print 'Background capture {0}'.format(self.is_backgroundCap)
