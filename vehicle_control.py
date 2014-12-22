@@ -1,0 +1,106 @@
+import time
+import math
+from pymavlink import mavutil
+from droneapi.lib import VehicleMode, Location
+import sc_config
+from sc_video import sc_video
+
+"""
+This class encapsulates the vehicle and some commonly used controls via the DroneAPI
+"""
+
+class VehicleControl(object):
+
+    def __init__(self):
+        # add variable initialisation here
+        self.api = None
+        self.vehicle = None
+
+    # connect - connects to droneAPI.
+    #    because of scope issues the local_connect() must be called from the top level class
+    def connect(self, api):
+        # First get an instance of the API endpoint (the connect via web case will be similar)
+        self.api = api
+
+        # if we succesfully connect
+        if not self.api is None:
+            # get our vehicle (we assume the user is trying to control the virst vehicle attached to the GCS)
+            self.vehicle = self.api.get_vehicles()[0]
+            return
+
+    # controlling_vehicle - return true if we have control of the vehicle
+    def controlling_vehicle(self):
+        if self.api is None:
+            return False
+
+        # we are active in guided mode
+        if self.vehicle.mode.name == "GUIDED":
+            return True
+
+    # set_yaw - send condition_yaw mavlink command to vehicle so it points at specified heading (in degrees)
+    def set_yaw(self, heading):
+        # create the CONDITION_YAW command
+        msg = self.vehicle.message_factory.mission_item_encode(0, 0,  # target system, target component
+                                                     0,     # sequence
+                                                     mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, # frame
+                                                     mavutil.mavlink.MAV_CMD_CONDITION_YAW,         # command
+                                                     2, # current - set to 2 to make it a guided command
+                                                     0, # auto continue
+                                                     heading, 0, 0, 0, 0, 0, 0) # param 1 ~ 7
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+        self.vehicle.flush()
+
+    # set_velocity - send nav_velocity command to vehicle to request it fly in specified direction
+    def set_velocity(self, velocity_x, velocity_y, velocity_z):
+        # create the SET_POSITION_TARGET_LOCAL_NED command
+        msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
+                                                     0,       # time_boot_ms (not used)
+                                                     0, 0,    # target system, target component
+                                                     mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
+                                                     0x01C7,  # type_mask (ignore pos | ignore acc)
+                                                     0, 0, 0, # x, y, z positions (not used)
+                                                     velocity_x, velocity_y, velocity_z, # x, y, z velocity in m/s
+                                                     0, 0, 0, # x, y, z acceleration (not used)
+                                                     0, 0)    # yaw, yaw_rate (not used)
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+        self.vehicle.flush()
+
+    # run - should be called repeatedly from parent
+    def run(self):
+        # return immediately if not connected
+        if self.api is None:
+            return
+
+        # we are connected so iterate
+        if self.controlling_vehicle():
+            # request vehicle to turn due east
+            self.set_yaw(90)
+        return
+
+    # test - should be called to test this class from the simulator
+    def test(self):
+        # return immediately if not connected
+        if self.api is None:
+            return
+
+        while not self.api.exit:
+            # we are connected so iterate
+
+            # control vehicle
+            if self.controlling_vehicle():
+                # request vehicle to turn due east
+                self.set_yaw(90)
+                #self.set_velocity(200,0,0)
+
+            # sleep so we don't consume too much CPU
+            time.sleep(1.0)
+
+# create global object
+veh_control = VehicleControl()
+
+# if this is the parent class connect and run test
+if __name__ == "__builtin__":
+    veh_control.connect(local_connect())
+    veh_control.test()

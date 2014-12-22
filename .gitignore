@@ -1,3 +1,6 @@
 *.pyc
 /logs
 /vids
+.cproject
+.project
+.settings/*

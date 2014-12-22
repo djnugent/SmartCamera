@@ -7,6 +7,9 @@ from sc_video import sc_video
 from sc_dispatcher import sc_dispatcher
 from sc_logger import sc_logger
 from CircleDetector import CircleDetector
+from vehicle_control import veh_control
+from pymavlink import mavutil
+from droneapi.lib import VehicleMode, Location
 
 current_milli_time = lambda: int(time.time() * 1000)
 
@@ -25,6 +28,10 @@ class PrecisionLand(object):
 
 	def name(self):
 		return "Precision_Land"
+
+	def connect(self):
+		# connect to droneapi
+		veh_control.connect(local_connect())
 
 	def run(self):
 		sc_logger.text(sc_logger.GENERAL, 'running {0}'.format(self.name()))
@@ -78,9 +85,11 @@ class PrecisionLand(object):
 	 			#show/record images
 	 			sc_logger.image(sc_logger.RAW, img)
 	 			sc_logger.image(sc_logger.GUI, rend_Image)
-	
-	 			
 
+			# update vehicle control
+			veh_control.run()
+
+# if starting from command line
 if __name__ == "__main__":
 	class arg(object):
 		camera = 0
@@ -88,4 +97,20 @@ if __name__ == "__main__":
 	arg = arg()
 
 	strat = PrecisionLand(arg)
+	strat.run()
+
+# if starting from simulator
+elif __name__ == "__builtin__":
+	class arg(object):
+		camera = 0
+
+	arg = arg()
+
+	# start precision landing
+	strat = PrecisionLand(arg)
+
+	# connect to droneapi
+	strat.connect()
+
+	# run strategy
 	strat.run()
