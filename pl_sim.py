@@ -1,0 +1,215 @@
+import cv2
+import numpy as np
+import math
+import time
+from position_vector import PositionVector
+from vehicle_control import veh_control
+from droneapi.lib import VehicleMode, Location, Attitude
+
+current_milli_time = lambda: int(round(time.time() * 1000))
+
+'''
+TODO 
+Intergrate config file
+
+Long term enhancements: 
+Fix position_to_pixel. Do it properly with vector based math
+Add in textured/tiled background
+dynamic exposure levels / frame rate 
+Add google earth as background
+'''
+
+
+
+class PrecisionLandSimulator():
+
+
+	def __init__(self):
+		self.backgroundColor = (0,0,0)
+		self.targetLocation = PositionVector()
+		self.vehicleLocation = PositionVector()
+
+
+	#load_target- load an image to simulate the target. Enter the actaul target size in meters(assuming the target is square)
+	#might change img to file name instead
+	def load_target(self,img, actualSize):
+		self.target = img
+		self.target_width = img.shape[1]
+		self.target_height = img.shape[0]
+
+
+		self.actualSize = actualSize
+		#scaling factor for real dimensions to simultor pixels
+		self.pixels_per_meter = (self.target_height + self.target_width) / (2.0 * actualSize) 
+
+
+
+	#set_target_location- give the target a gps location
+	def set_target_location(self, location):
+		self.targetLocation.set_from_location(location)
+
+	#define_camera- set camera parameters used to simulate an image
+	def define_camera(self, camera_width, camera_height, hfov, vfov, frameRate):
+		self.camera_width = camera_width
+		self.camera_height = camera_height
+		self.camera_vfov = vfov
+		self.camera_hfov = hfov
+		self.camera_fov = math.sqrt(vfov**2 + hfov**2)
+		self.camera_frameRate = frameRate
+
+	#refresh_simulator - update vehicle position info necessary to simulate an image 
+	def refresh_simulator(self, vehicleLocation, vehicleAttitude):
+		#get gps location of vehicle
+		self.vehicleLocation.set_from_location(vehicleLocation)
+
+		self.vehicleAttitude = vehicleAttitude
+
+
+	#main - code used to test the simulator. Must be run from sitl. Control vehicle in guided mode using arrow keys,r,t,q,e
+	def main(self):
+		veh_control.connect(local_connect())
+
+		img = cv2.imread('/home/dannuge/SmartCamera/targetF.jpg')
+
+		self.load_target(img, 0.6)
+		self.set_target_location(veh_control.get_location())
+		self.define_camera(640,480,70,43,30)
+
+		while(veh_control.is_connected()):
+		    location = veh_control.get_location()
+		    attitude = veh_control.get_attitude()
+		    
+		    self.refresh_simulator(location,attitude)
+		    frame = self.get_frame()
+		    cv2.imshow('frame',frame)
+
+		    key = cv2.waitKey(1)
+		    #forward
+		    if key ==1113938:
+		    	veh_control.set_velocity(20,0,0)
+		    elif key == 1113940:
+		    	veh_control.set_velocity(-20,0,0)
+		    elif key == 1113937:
+		    	veh_control.set_velocity(0,-20,0)
+		    elif key ==1113939:
+		    	veh_control.set_velocity(0,20,0)
+		    elif(key == 1048690):
+		    	yaw = math.degrees(attitude.yaw)
+		    	veh_control.set_yaw(yaw - 10)
+		    elif(key == 1048692):
+		    	yaw = math.degrees(attitude.yaw)
+		    	veh_control.set_yaw(yaw + 10)
+		    elif(key == 1048677):
+		    	veh_control.set_velocity(0,0,-20)
+		    elif(key == 1048689):
+		    	veh_control.set_velocity(0,0,20)
+		    else:
+				veh_control.set_velocity(0,0,0)
+
+
+	#shift_to_origin - make the center of the image (0,0)
+	def shift_to_origin(self,pt,width,height):
+		return ((pt[0] - width/2.0),(-1*pt[1] + height/2.0))
+
+
+	#shift_to_image - make the center of the image (imgwidth/2,imgheight/2)
+	def shift_to_image(self,pt,width,height):
+		return ((pt[0] + width/2),(-1*pt[1] + height/2.0))
+
+	#project_3D_to_2D - project a 3d point onto a 2d plane. Covert from world perspective to camera perspective
+	def project_3D_to_2D(self,thetaX,thetaY,thetaZ, aX, aY,aZ, cX, cY, cZ, height, width, fov):
+		dX = math.cos(-thetaY) * (math.sin(-thetaZ)*(cY-aY) + math.cos(-thetaZ)*(cX-aX)) - math.sin(-thetaY)*(aZ-cZ)
+		dY = math.sin(-thetaX) * (math.cos(-thetaY)*(aZ-cZ) + math.sin(-thetaY)*(math.sin(-thetaZ)*(cY-aY) + math.cos(-thetaZ)*(cX-aX))) + math.cos(-thetaX)*(math.cos(-thetaZ)*(cY-aY) - math.sin(-thetaZ) * (cX-aX))
+		dZ = math.cos(-thetaX) * (math.cos(-thetaY)*(aZ-cZ) + math.sin(-thetaY)*(math.sin(-thetaZ)*(cY-aY) + math.cos(-thetaZ)*(cX-aX))) - math.sin(-thetaX)*(math.cos(-thetaZ)*(cY-aY) - math.sin(-thetaZ) * (cX-aX))
+
+		#veiwer position
+		eX = 0
+		eY = 0
+		eZ = 1.0/math.tan(math.radians(fov)/2.0)
+
+		#2D point
+		bX = (dX - eX)*(eZ/dZ)
+		bY = (dY - eY)*(eZ/dZ)
+
+		#scaled to resolution
+		sX = bX * width
+		sY = bY * height
+
+		return (sX,sY)
+
+
+	#simulate_target - simulate an image given the target position[aX,aY,aZ](pixels)and camera position[cX,cY,cZ](pixels) and camera orientation
+	def simulate_target(self,thetaX,thetaY,thetaZ, aX, aY, aZ, cX, cY, cZ, camera_height, camera_width, fov):
+		img_width = self.target_width
+		img_height = self.target_height
+
+		#point maps
+		corners = np.float32([[-img_width/2,img_height/2],[img_width/2 ,img_height/2],[-img_width/2,-img_height/2],[img_width/2, -img_height/2]])
+		newCorners = np.float32([[0,0],[0,0],[0,0],[0,0]])
+
+
+		#calculate projection for four corners of image
+		for i in range(0,len(corners)):
+
+			#shift to world
+			x = corners[i][0] + cX - img_width/2.0
+			y = corners[i][1] + cY - img_height/2.0
+
+
+			#calculate perspective and position
+			x , y = self.project_3D_to_2D(thetaX,thetaY,thetaZ, aY, aX, aZ, y, x, cZ,camera_height,camera_width,fov) 
+
+			#shift to camera
+			x , y = self.shift_to_image((x,y),camera_width,camera_height)
+			newCorners[i] = x,y  
+
+
+		#project image
+		M = cv2.getPerspectiveTransform(corners,newCorners)
+		sim = cv2.warpPerspective(self.target,M,(self.camera_width,self.camera_height),borderValue=self.backgroundColor)
+
+		return sim
+
+
+
+	#get_frame - retreive a simulated camera image
+	def get_frame(self):
+		start = current_milli_time()
+
+		#distance bewteen camera and target in meters
+		aX,aY,aZ = self.targetLocation.x, self.targetLocation.y, self.targetLocation.z
+		cX,cY,cZ = self.vehicleLocation.x, self.vehicleLocation.y, self.vehicleLocation.z
+
+		#camera angle
+		thetaX = self.vehicleAttitude.pitch
+		thetaY = self.vehicleAttitude.roll
+		thetaZ = self.vehicleAttitude.yaw
+
+		#convert distance bewtween camera and target in pixels
+		aX = aX * self.pixels_per_meter
+		aY = aY * self.pixels_per_meter
+		aZ = aZ * self.pixels_per_meter
+		cX = cX * self.pixels_per_meter
+		cY = cY * self.pixels_per_meter
+		cZ = cZ * self.pixels_per_meter
+		
+
+		#render image
+		sim = self.simulate_target(thetaX,thetaY,thetaZ, aX, aY, aZ, cX, cY, cZ, self.camera_height, self.camera_width, self.camera_fov)
+		
+		#simulate framerate
+		while(1000/self.camera_frameRate > current_milli_time() - start):
+			pass
+		return sim
+	
+
+if __name__ == "__builtin__":
+	sim = PrecisionLandSimulator()
+	sim.main()
+
+
+
+	
+
+
+

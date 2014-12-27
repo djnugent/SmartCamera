@@ -67,6 +67,21 @@ class VehicleControl(object):
         self.vehicle.send_mavlink(msg)
         self.vehicle.flush()
 
+    #get_location - returns the lat, lon, alt of vehicle
+    def get_location(self):
+        return self.vehicle.location
+
+    #get_attitude - returns pitch, roll, and yaw of vehicle
+    def get_attitude(self):
+        return self.vehicle.attitude
+
+    #is_connected - are we connected to a DroneApi
+    def is_connected(self):
+        if self.api is None:
+            return False
+        return (not self.api.exit)
+
+        
     # run - should be called repeatedly from parent
     def run(self):
         # return immediately if not connected
@@ -93,6 +108,8 @@ class VehicleControl(object):
                 # request vehicle to turn due east
                 self.set_yaw(90)
                 #self.set_velocity(200,0,0)
+                print self.get_attitude()
+                print self.get_location()
 
             # sleep so we don't consume too much CPU
             time.sleep(1.0)
