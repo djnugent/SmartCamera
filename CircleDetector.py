@@ -44,7 +44,7 @@ class CircleDetector(object):
 		self.cam_vfov = sc_config.config.get_float('camera', 'vertical-fov', 43.3)
 
 
-	#analyze_frame - process an frame and look for a bulleye
+	#analyze_frame - process an frame and look for a bullseye
 	#params -child_conn: child pipe connection
 	#		-img: raw image to be processed
 	#		-craftAttitude: roll and pitch of aircraft

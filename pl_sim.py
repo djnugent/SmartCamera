@@ -5,6 +5,7 @@ import time
 from position_vector import PositionVector
 from vehicle_control import veh_control
 from droneapi.lib import VehicleMode, Location, Attitude
+import sc_config
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -25,17 +26,31 @@ class PrecisionLandSimulator():
 
 
 	def __init__(self):
-		self.backgroundColor = (0,0,0)
 		self.targetLocation = PositionVector()
 		self.vehicleLocation = PositionVector()
 
+		self.backgroundColor = (74,88,109)
+
+
+		#load target
+		filename = sc_config.config.get_string('simulator', 'target_location', '/home/dannuge/SmartCamera/target.jpg')
+		target_size = sc_config.config.get_float('algorithm', 'outer_ring', 1.0)
+		self.load_target(filename,target_size)
+
+
+		#define camera
+		self.camera_width = sc_config.config.get_integer('camera', 'width', 640)
+		self.camera_height = sc_config.config.get_integer('camera', 'height', 480)
+		self.camera_vfov = sc_config.config.get_float('camera', 'vertical-fov',43.3 )
+		self.camera_hfov = sc_config.config.get_float('camera', 'horizontal-fov', 72.42)
+		self.camera_fov = math.sqrt(self.camera_vfov**2 + self.camera_hfov**2)
+		self.camera_frameRate = 30
 
 	#load_target- load an image to simulate the target. Enter the actaul target size in meters(assuming the target is square)
-	#might change img to file name instead
-	def load_target(self,img, actualSize):
-		self.target = img
-		self.target_width = img.shape[1]
-		self.target_height = img.shape[0]
+	def load_target(self,filename, actualSize):
+		self.target = cv2.imread(filename)
+		self.target_width = self.target.shape[1]
+		self.target_height = self.target.shape[0]
 
 
 		self.actualSize = actualSize
@@ -43,19 +58,10 @@ class PrecisionLandSimulator():
 		self.pixels_per_meter = (self.target_height + self.target_width) / (2.0 * actualSize) 
 
 
-
 	#set_target_location- give the target a gps location
 	def set_target_location(self, location):
 		self.targetLocation.set_from_location(location)
 
-	#define_camera- set camera parameters used to simulate an image
-	def define_camera(self, camera_width, camera_height, hfov, vfov, frameRate):
-		self.camera_width = camera_width
-		self.camera_height = camera_height
-		self.camera_vfov = vfov
-		self.camera_hfov = hfov
-		self.camera_fov = math.sqrt(vfov**2 + hfov**2)
-		self.camera_frameRate = frameRate
 
 	#refresh_simulator - update vehicle position info necessary to simulate an image 
 	def refresh_simulator(self, vehicleLocation, vehicleAttitude):
@@ -69,7 +75,7 @@ class PrecisionLandSimulator():
 	def main(self):
 		veh_control.connect(local_connect())
 
-		img = cv2.imread('/home/dannuge/SmartCamera/targetF.jpg')
+		img = cv2.imread('/home/dannuge/SmartCamera/target.jpg')
 
 		self.load_target(img, 0.6)
 		self.set_target_location(veh_control.get_location())
@@ -203,8 +209,10 @@ class PrecisionLandSimulator():
 		return sim
 	
 
+sim = PrecisionLandSimulator()
+
+
 if __name__ == "__builtin__":
-	sim = PrecisionLandSimulator()
 	sim.main()
 
 

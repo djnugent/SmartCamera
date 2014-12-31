@@ -4,10 +4,18 @@ from pymavlink import mavutil
 from droneapi.lib import VehicleMode, Location
 import sc_config
 from sc_video import sc_video
+from sc_logger import sc_logger
 
 """
 This class encapsulates the vehicle and some commonly used controls via the DroneAPI
 """
+
+'''
+TODO:
+At rally point support to get get_landing()
+'''
+
+
 
 class VehicleControl(object):
 
@@ -15,6 +23,19 @@ class VehicleControl(object):
         # add variable initialisation here
         self.api = None
         self.vehicle = None
+
+        self.last_mode_call = 0
+        self.last_mode_state = 'STABILIZE'
+        self.mode_update_rate = sc_config.config.get_float('vehicle control', 'mode_update_rate', 0.75)
+
+        self.last_home_call = 0
+        self.last_home = None
+        self.home_update_rate = sc_config.config.get_float('vehicle control', 'home_update_rate', 10)
+
+
+        self.last_set_velocity = 0
+        self.vel_update_rate = sc_config.config.get_float('vehicle control', 'vel_update_rate', 0.1)
+
 
     # connect - connects to droneAPI.
     #    because of scope issues the local_connect() must be called from the top level class
@@ -28,14 +49,27 @@ class VehicleControl(object):
             self.vehicle = self.api.get_vehicles()[0]
             return
 
+    #is_connected - are we connected to a DroneApi
+    def is_connected(self):
+        if (self.api is None) or (self.vehicle is None):
+            return False
+        return (not self.api.exit)
+
+    #get_vehicle - returns the connected vehicle
+    def get_vehicle(self):
+        return self.vehicle
+
     # controlling_vehicle - return true if we have control of the vehicle
     def controlling_vehicle(self):
-        if self.api is None:
-            return False
-
-        # we are active in guided mode
-        if self.vehicle.mode.name == "GUIDED":
-            return True
+            if self.api is None:
+                return False
+            
+            # we are active in guided mode
+            if self.get_mode() == "GUIDED":
+                return True
+            
+            else:
+                return False
 
     # set_yaw - send condition_yaw mavlink command to vehicle so it points at specified heading (in degrees)
     def set_yaw(self, heading):
@@ -53,19 +87,22 @@ class VehicleControl(object):
 
     # set_velocity - send nav_velocity command to vehicle to request it fly in specified direction
     def set_velocity(self, velocity_x, velocity_y, velocity_z):
-        # create the SET_POSITION_TARGET_LOCAL_NED command
-        msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
-                                                     0,       # time_boot_ms (not used)
-                                                     0, 0,    # target system, target component
-                                                     mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
-                                                     0x01C7,  # type_mask (ignore pos | ignore acc)
-                                                     0, 0, 0, # x, y, z positions (not used)
-                                                     velocity_x, velocity_y, velocity_z, # x, y, z velocity in m/s
-                                                     0, 0, 0, # x, y, z acceleration (not used)
-                                                     0, 0)    # yaw, yaw_rate (not used)
-        # send command to vehicle
-        self.vehicle.send_mavlink(msg)
-        self.vehicle.flush()
+        #only let commands through at 10hz
+        if(time.time() - self.last_set_velocity) > self.vel_update_rate:
+            self.last_set_velocity = time.time()
+            # create the SET_POSITION_TARGET_LOCAL_NED command
+            msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
+                                                         0,       # time_boot_ms (not used)
+                                                         0, 0,    # target system, target component
+                                                         mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
+                                                         0x01C7,  # type_mask (ignore pos | ignore acc)
+                                                         0, 0, 0, # x, y, z positions (not used)
+                                                         velocity_x, velocity_y, velocity_z, # x, y, z velocity in m/s
+                                                         0, 0, 0, # x, y, z acceleration (not used)
+                                                         0, 0)    # yaw, yaw_rate (not used)
+            # send command to vehicle
+            self.vehicle.send_mavlink(msg)
+            self.vehicle.flush()
 
     #get_location - returns the lat, lon, alt of vehicle
     def get_location(self):
@@ -75,13 +112,51 @@ class VehicleControl(object):
     def get_attitude(self):
         return self.vehicle.attitude
 
-    #is_connected - are we connected to a DroneApi
-    def is_connected(self):
-        if self.api is None:
-            return False
-        return (not self.api.exit)
+    #get_landing - get the landing location. Only supports home location
+    def get_landing(self):
+        return self.get_home()
 
-        
+    #get_home - get the home location for this mission
+    def get_home(self, wait_for_arm = False):
+
+        #wait unitl we are armed to grab home position. This will lock up the program.
+        if(wait_for_arm):
+            while(self.vehicle.armed == False):
+                pass
+
+        if(time.time() - self.last_home_call > self.home_update_rate):
+            self.last_home_call = time.time()
+
+            # download the vehicle waypoints
+            mission_cmds = self.vehicle.commands
+            mission_cmds.download()
+            mission_cmds.wait_valid()
+            # get the home lat and lon
+            home_lat = mission_cmds[0].x
+            home_lon = mission_cmds[0].y
+
+            self.last_home = Location(home_lat,home_lon,0)
+
+        return self.last_home
+
+    #get_mode - get current mode of vehicle
+    def get_mode(self):
+        #limit how often we request the current mode
+        if (time.time() - self.last_mode_call) > self.mode_update_rate:
+            self.last_mode_call = time.time()
+            self.last_mode = self.vehicle.mode.name
+
+        return self.last_mode
+
+    #set_mode - set the mode of the vehicle as long as we are in control
+    def set_mode(self, mode):
+        if self.controlling_vehicle():
+            self.vehicle.mode = VehicleMode(mode)
+            self.vehicle.flush()
+            return True
+
+        return False
+
     # run - should be called repeatedly from parent
     def run(self):
         # return immediately if not connected

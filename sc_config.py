@@ -120,7 +120,7 @@ class SmartCamConfig(object):
         try:
             #create iterator
             itr = np.nditer(new_value)
-            colSize = new_value.shape[1]
+            colSize = new_value.shape[0]
             #deliminate columns by whitespace and rows by newline
             arr = ''
             for x in range(0,itr.itersize):

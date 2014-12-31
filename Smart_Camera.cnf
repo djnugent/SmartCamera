@@ -1,0 +1,62 @@
+[algorithm]
+eccentricity = 0.6
+distance_threshold = 15
+min_circles = 5
+radius_tolerance = 2
+ratio_tolerance = 0.015
+target_code = 0.8 0.91 0.76 0.84 0.7 0.66 0.49
+	
+outer_ring = 0.08255
+
+[processing]
+desired_cores = 4
+background_capture = True
+
+[logging]
+location = ~/SmartCamera/
+print_level = debug, general
+log_level = aircraft , algorithm, general
+display_level = raw, gui
+record_level = raw
+
+[camera]
+index = 0
+width = 640
+height = 480
+horizontal-fov = 70.42
+vertical-fov = 43.3
+matrix = 614.01269552 0.0 315.00073982
+	0.0 614.43556296 237.14926858
+	0.0 0.0 1.0
+distortion = 0.12269303 -0.26618881 0.00129035 0.00081791 0.17005303
+
+[gui]
+show_target = False
+show_mode = False
+show_vel_vector = False
+show_artifical_horizon = False
+show_distance = False
+show_fps = False
+show_location = False
+
+[general]
+simulate = False
+
+[control]
+search_yaw_speed = 5.0
+search_target_delay = 2.0
+vel_xy_p = 1.0
+vel_xy_i = 0.0
+vel_xy_d = 0.0
+vel_xy_imax = 10.0
+vel_z_p = 2.5
+vel_z_i = 0.0
+vel_z_d = 0.0
+vel_z_imax = 10.0
+vel_speed_min = 1.0
+vel_speed_max = 4.0
+vel_accel = 0.5
+vel_dist_ratio = 0.5
+vel_pitch_target = -5.0
+vel_update_rate_sec = 0.2
+

@@ -35,10 +35,12 @@ class SmartCameraLogger(object):
 
 	def __init__(self):
 		#create sub driectory for logs and videos
-		path = './logs'
+		self.location = sc_config.config.get_string('logging','location','./')
+
+		path = self.location + 'logs'
 		if not os.path.exists(path):
 		    os.makedirs(path)
-		path = './vids'
+		path = self.location + 'vids'
 		if not os.path.exists(path):
 		    os.makedirs(path)
 
@@ -108,18 +110,22 @@ class SmartCameraLogger(object):
 
 		#log text
 		if(self.log_level.find(level) != -1):
+			
 			#open a logger if necessary
-			if(self.logger == None):
+			if(self.logger is None):
 				self.open_text_logger()
+			
+
 			#log text
-			self.logger.info(msg , extra={'type': level})
+			#self.logger.info(msg , extra={'type': level})
 
 
 
 	#open_video_writer- opens a video writer with a filename that starts the tag. The rest of the file name is date-time
 	def open_video_writer(self, tag):
 		#define filename
-		filename = time.strftime('./vids/{0}-{1}-%Y-%m-%d-%H-%M.avi'.format(self.strat_name, tag))
+		path = self.location + 'vids/{0}-{1}-%Y-%m-%d-%H-%M.avi'
+		filename = time.strftime(path.format(self.strat_name, tag))
 		
 
 		# Define the codec and create VideoWriter object
@@ -147,18 +153,40 @@ class SmartCameraLogger(object):
 
 	#open_text_logger - create an instance of 'logging' and 
 	def open_text_logger(self):
+
+		'''
+		
 		#configure logger
 		#format of log line: time - log level - message
 		FORMAT = '%(asctime)s - %(type)s - %(message)s'
-		#filename
-		#filename = './logs/' + self.strat_name + time.strftime("-%Y-%m-%d-%H:%M") + '.log'
+		
+
 		#define filename
-		filename = time.strftime('./logs/{0}-%Y-%m-%d-%H-%M.log'.format(self.strat_name))
+		path = self.location + 'logs/{0}-%Y-%m-%d-%H-%M.log'
+		filename = time.strftime(path.format(self.strat_name))
 
 		logging.basicConfig(format=FORMAT, level=logging.INFO, filename= filename)
 		#create logger
 		self.logger = logging.getLogger()
 
+		'''
+		#create logger
+		self.logger = logging.getLogger('sc_logger')
+		self.logger.setLevel(logging.INFO)
+
+		# add a file handler
+		#define filename
+		path = self.location + 'logs/{0}-%Y-%m-%d-%H-%M.log'
+		filename = time.strftime(path.format(self.strat_name))
+		fh = logging.FileHandler(filename)
+		fh.setLevel(logging.INFO)
+		# create a formatter and set the formatter for the handler.
+		frmt = logging.Formatter('%(asctime)s - %(type)s - %(message)s')
+		fh.setFormatter(frmt)
+		# add the Handler to the logger
+		self.logger.addHandler(fh)
+		self.logger.propogate = False
+		
 
 #create global logger
 sc_logger = SmartCameraLogger()

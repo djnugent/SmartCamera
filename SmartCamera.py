@@ -14,6 +14,12 @@ from OpticalFlow import OpticalFlow
 
 
 
+
+#THIS FILE IS INACTIVE. NEEDS TO BE BETTER INTEGRATED WITH CONFIG FILE
+
+
+'''
+
 #parse arguments
 parser = argparse.ArgumentParser(description="Use image processing to peform visual navigation")
 #optional arguments
@@ -25,6 +31,8 @@ parser.add_argument('-i', '--input', default=False, help='use a video filename a
 parser.add_argument('-f', '--file', default='Smart_Camera.cnf', help='load a config file other than the default')
 
 args, unknown = parser.parse_known_args()
+'''
+
 
 
 
