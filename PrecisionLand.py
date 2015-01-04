@@ -9,7 +9,7 @@ from sc_logger import sc_logger
 from CircleDetector import CircleDetector
 from vehicle_control import veh_control
 from pymavlink import mavutil
-from droneapi.lib import VehicleMode, Location
+from droneapi.lib import VehicleMode, Location, Attitude
 from pl_sim import sim
 import math
 from position_vector import PositionVector
@@ -36,32 +36,35 @@ if controlling the vehicle:
 
 
 '''
+Temporary Changes:
+-took out logging ability
+'''
+
+
+'''
 TODO:
-have program takeover during landing
-send warning message to GCS when releasing control
-implement a landing detector and when to release control
+Future:
+-have program takeover during landing
+-send warning message to GCS when releasing control
+-implement a landing detector and when to release control
 
-add logic for when the vehicle enters from the side of the landing cylinder and underneath the abort point
-
-add positive and negative check on parameters
+Bugs:
+-add logic for when the vehicle enters from the side of the landing cylinder and underneath the abort point
+	-this does not properly reset right now
+-add positive and negative check on parameters
 	-inverted on Z axis
+-add a start landing method for cleaner restart of landing
 
-add util class
+Improvements:
+-add varaible descent_rate based on distance to target center and altitude
+-add util class
 	-pixel math
 	-distance
 	-time
-
-add a start landing method for cleaner restart of landing
-
-make camera operate in landing zone not just landing modes
-
-add update rate to sc_logger
-
-fix controls math
-
-fix project file structure
-
-fix Logging printing to console
+-make camera operate in landing zone not just landing modes
+-add update rate to sc_logger
+-fix project file structure
+-fix Logging printing to console
 '''
 
 
@@ -92,13 +95,16 @@ class PrecisionLand(object):
 		self.climb_altitude = sc_config.config.get_integer('general','climb_altitude', 20)
 
 		#the max horizontal speed sent to autopilot
-		self.vel_speed_max = sc_config.config.get_float('general', 'vel_speed_max', 2)
+		self.vel_speed_max = sc_config.config.get_float('general', 'vel_speed_max', 5)
 
 		#P term of the horizontal distance to velocity controller
-		self.dist_to_vel = sc_config.config.get_float('general', 'dist_to_vel', 0.3)
+		self.dist_to_vel = sc_config.config.get_float('general', 'dist_to_vel', 0.15)
 
 		#Descent velocity
 		self.descent_rate = sc_config.config.get_float('general','descent_rate', 0.5)
+
+		#roll/pitch value that is considered stable
+		self.stable_attitude = sc_config.config.get_float('general', 'stable_attitude', 0.18)
 
 		#Climb rate when executing a search
 		self.climb_rate = sc_config.config.get_float('general','climb_rate', -2.0)
@@ -106,11 +112,14 @@ class PrecisionLand(object):
 		#The height at a climb is started if no target is detected
 		self.abort_height = sc_config.config.get_integer('general', 'abort_height', 10)
 
+		#when we have lock on target, only descend if within this radius
+		self.descent_radius = sc_config.config.get_float('general', 'descent_radius', 1.0)
+
 		#The height at which we lock the position on xy axis
 		self.landing_area_min_alt = sc_config.config.get_integer('general', 'landing_area_min_alt', 1)
 
 		#The radius of the cylinder surrounding the landing pad
-		self.landing_area_radius = sc_config.config.get_integer('general', 'landing_area_radius', 10)
+		self.landing_area_radius = sc_config.config.get_integer('general', 'landing_area_radius', 20)
 
 
 		#how mant times we have attempted landing
@@ -148,6 +157,10 @@ class PrecisionLand(object):
 		#start a video capture
 		if(self.simulator):
 			sim.set_target_location(veh_control.get_home())
+			#sim.set_target_location(Location(0,0,0))
+
+
+
 		else:
 			sc_video.start_capture(self.camera_index)
 
@@ -166,14 +179,20 @@ class PrecisionLand(object):
 		 		#update how often we dispatch a command
 		 		sc_dispatcher.calculate_dispatch_schedule()
 
-
+		 		
 		 		#get info from autopilot
 		 		location = veh_control.get_location()
 		 		attitude = veh_control.get_attitude()
+		 		'''
+		 		#get info from autopilot
+		 		location = Location(0.000009,0,location.alt)
+		 		attitude = Attitude(0,0,0)
+		 		'''
 
 		 		#update simulator
 		 		if(self.simulator):
 		 			sim.refresh_simulator(location,attitude)
+		 			veh_control.set_yaw(90)
 
 		 		# grab an image
 				capStart = current_milli_time()
@@ -370,34 +389,53 @@ class PrecisionLand(object):
 	def move_to_target(self,target_info,attitude,location):
 		x,y = target_info[1]
 
+		
 		#shift origin to center of image
 		x,y = self.shift_to_origin((x,y),self.camera_width,self.camera_height)
+		
+		#this is necessary because the simulator is 100% accurate
+		if(self.simulator):
+			hfov = 48.7
+			vfov = 49.7
+		else:
+			hfov = self.camera_hfov
+			vfov = self.camera_vfov
+
 
 		#stabilize image with vehicle attitude
-		x += (self.camera_width / self.camera_hfov) * math.degrees(attitude.roll)
-		y += (self.camera_height / self.camera_vfov) * math.degrees(attitude.pitch)
+		x -= (self.camera_width / hfov) * math.degrees(attitude.roll)
+		y += (self.camera_height / vfov) * math.degrees(attitude.pitch)
 
 
 		#convert to distance
 		X, Y = self.pixel_point_to_position_xy((x,y),location.alt)
 
 		#convert to world coordinates
-		target_heading = math.atan2(Y,X)
-		target_heading = math.pi/2 - target_heading + attitude.yaw
-		target_magnitude = math.sqrt(X**2 + Y**2)
+		target_heading = math.atan2(Y,X) % (2*math.pi)
+		target_heading = (attitude.yaw - target_heading) 
+
+		target_distance = math.sqrt(X**2 + Y**2)
+
+		print round(target_distance,2)
 
 		#calculate speed toward target
-		speed = target_magnitude * self.dist_to_vel
-
+		speed = target_distance * self.dist_to_vel
 		#apply max speed limit
 		speed = min(speed,self.vel_speed_max)
 
 		#calculate cartisian speed
-		vx = speed * math.sin(target_heading)
-		vy = speed * math.cos(target_heading)
+		vx = speed * math.sin(target_heading) * -1.0
+		vy = speed * math.cos(target_heading) 
+
+		#only descend when on top of target
+		if(target_distance > self.descent_radius):
+			vz = 0
+		else:
+			vz = self.descent_rate
+
 
 		#send velocity commands to target heading
-		veh_control.set_velocity(vx,vy,self.descent_rate)
+		veh_control.set_velocity(vx,vy,vz)
 
 
 
@@ -428,8 +466,13 @@ class PrecisionLand(object):
 
 	#inside_landing_area - determine is we are in a landing zone 0 = False, 1 = True, -1 = below the zone
 	def inside_landing_area(self):
+		
 		vehPos = PositionVector.get_from_location(veh_control.get_location())
 		landPos = PositionVector.get_from_location(veh_control.get_landing())
+		'''
+		vehPos = PositionVector.get_from_location(Location(0,0,10))
+		landPos = PositionVector.get_from_location(Location(0,0,0))
+		'''
 		if(PositionVector.get_distance_xy(vehPos,landPos) < self.landing_area_radius):
 			#below area
 			if(vehPos.z < self.landing_area_min_alt):
@@ -467,6 +510,16 @@ class PrecisionLand(object):
 	#shift_to_origin - make the center of the image (0,0)
 	def shift_to_origin(self,pt,width,height):
 		return ((pt[0] - width/2.0),(-1*pt[1] + height/2.0))
+
+
+	# wrap_PI - wraps value between -2*PI ~ +2*PI (i.e. -360 ~ +360 degrees) down to -PI ~ PI (i.e. -180 ~ +180 degrees)
+	#angle should be in radians
+	def wrap_PI(self,angle):
+		if (angle > math.pi):
+			return (angle - (math.pi * 2.0))
+		if (angle < -math.pi):
+			return (angle + (math.pi * 2.0))
+		return angle
 
 
 # if starting from mavproxy

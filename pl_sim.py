@@ -40,8 +40,8 @@ class PrecisionLandSimulator():
 
 		#define camera
 		self.camera_width = sc_config.config.get_integer('camera', 'width', 640)
-		self.camera_height = sc_config.config.get_integer('camera', 'height', 480)
-		self.camera_vfov = sc_config.config.get_float('camera', 'vertical-fov',43.3 )
+		self.camera_height = sc_config.config.get_integer('camera', 'height', 640)
+		self.camera_vfov = sc_config.config.get_float('camera', 'vertical-fov',72.42 )
 		self.camera_hfov = sc_config.config.get_float('camera', 'horizontal-fov', 72.42)
 		self.camera_fov = math.sqrt(self.camera_vfov**2 + self.camera_hfov**2)
 		self.camera_frameRate = 30
@@ -75,11 +75,7 @@ class PrecisionLandSimulator():
 	def main(self):
 		veh_control.connect(local_connect())
 
-		img = cv2.imread('/home/dannuge/SmartCamera/target.jpg')
-
-		self.load_target(img, 0.6)
 		self.set_target_location(veh_control.get_location())
-		self.define_camera(640,480,70,43,30)
 
 		while(veh_control.is_connected()):
 		    location = veh_control.get_location()
@@ -90,27 +86,28 @@ class PrecisionLandSimulator():
 		    cv2.imshow('frame',frame)
 
 		    key = cv2.waitKey(1)
-		    #forward
+		    print key
+
 		    if key ==1113938:
-		    	veh_control.set_velocity(20,0,0)
+		    	veh_control.set_velocity(2,0,0) #forward
 		    elif key == 1113940:
-		    	veh_control.set_velocity(-20,0,0)
+		    	veh_control.set_velocity(-2,0,0) #backward
 		    elif key == 1113937:
-		    	veh_control.set_velocity(0,-20,0)
+		    	veh_control.set_velocity(0,-2,0) #left
 		    elif key ==1113939:
-		    	veh_control.set_velocity(0,20,0)
+		    	veh_control.set_velocity(0,2,0) #right
 		    elif(key == 1048690):
-		    	yaw = math.degrees(attitude.yaw)
-		    	veh_control.set_yaw(yaw - 10)
+		    	yaw = math.degrees(attitude.yaw) #yaw left
+		    	veh_control.set_yaw(yaw - 5)
 		    elif(key == 1048692):
-		    	yaw = math.degrees(attitude.yaw)
-		    	veh_control.set_yaw(yaw + 10)
+		    	yaw = math.degrees(attitude.yaw) #yaw right
+		    	veh_control.set_yaw(yaw + 5)
 		    elif(key == 1048677):
-		    	veh_control.set_velocity(0,0,-20)
+		    	veh_control.set_velocity(0,0,-2) #down
 		    elif(key == 1048689):
-		    	veh_control.set_velocity(0,0,20)
+		    	veh_control.set_velocity(0,0,2) #up
 		    else:
-				veh_control.set_velocity(0,0,0)
+				veh_control.set_velocity(0,0,0) #still
 
 
 	#shift_to_origin - make the center of the image (0,0)

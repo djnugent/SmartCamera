@@ -272,7 +272,7 @@ class CircleDetector(object):
 		mostConcentric = np.resize(mostConcentric, maxConcentricCnt)
 
 		#calculate meanCenter
-		meanCenter = xSum[maxConcentricIndex] / maxConcentricCnt, ySum[maxConcentricIndex]/maxConcentricCnt
+		meanCenter = xSum[maxConcentricIndex] / (maxConcentricCnt - 1), ySum[maxConcentricIndex]/(maxConcentricCnt - 1)
 
 		return mostConcentric, meanCenter
 
