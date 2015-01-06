@@ -22,7 +22,7 @@ class PrecisionLandGUI(object):
 		pass
 
 	@classmethod		
-	#add_mode_border- put a colored border around the imgae to signify the control the computer has
+	#add_mode_border- put a colored border around the image to signify the control the computer has
 	def add_mode_border(self, mode):
 		pass
 

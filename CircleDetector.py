@@ -4,7 +4,7 @@ import numpy as np
 import math
 import time
 import sc_config
-current_milli_time = lambda: int(round(time.time() * 1000))
+from pl_util import current_milli_time, get_distance_from_pixels
 
 
 '''
@@ -41,7 +41,11 @@ class CircleDetector(object):
 
 		#define field of view
 		self.cam_hfov = sc_config.config.get_float('camera', 'horizontal-fov', 70.42)
-		self.cam_vfov = sc_config.config.get_float('camera', 'vertical-fov', 43.3)
+		self.cam_vfov = sc_config.config.get_float('camera', 'vertical-fov', 43.3)\
+
+		#define camera size
+		self.cam_width = sc_config.config.get_integer('camera', 'width', 640)
+		self.cam_height = sc_config.config.get_integer('camera', 'height', 480)
 
 
 	#analyze_frame - process an frame and look for a bullseye
@@ -296,21 +300,6 @@ class CircleDetector(object):
 		return ratios			
 
 
-
-	# pixels_to_angle_x - converts a number of pixels into an angle in radians 
-	def pixels_to_angle_x(self, num_pixels):
-		return num_pixels * math.radians(self.cam_hfov) / 640
-
-	# get_distance_from_pixels - returns distance to balloon in meters given number of pixels in image and expected 0.5m radius
-	#    size_in_pizels : diameter or radius of the object on the image (in pixels)
-	#    actual_size : diameter or radius of the object in meters
-	def get_distance_from_pixels(self,size_in_pixels, actual_size):
-		 # avoid divide by zero by returning 9999.9 meters for zero sized object 
-	    if (size_in_pixels == 0):
-	        return 9999.9
-	    # convert num_pixels to angular size
-	    return actual_size / self.pixels_to_angle_x(size_in_pixels)
-
 	#calculateRingSize - based on ring ID number and target size, calculate the size of a specific ring
 	def calculateRingSize(self,ringNumber):
 		radius = self.outer_ring #in meters
@@ -337,8 +326,12 @@ class CircleDetector(object):
 					radius1 = (circle1[1][0] + circle1[1][1]) /2.0
 					radius2 = (circle2[1][0] + circle2[1][1]) /2.0
 
-					dist1 = self.get_distance_from_pixels(radius1, self.calculateRingSize(j))
-					dist2 = self.get_distance_from_pixels(radius2, self.calculateRingSize(j+1))
+					fov = math.sqrt(self.cam_vfov**2 + self.cam_hfov**2)
+					img_size = math.sqrt(self.cam_width**2 + self.cam_height**2)
+
+
+					dist1 = get_distance_from_pixels(radius1, self.calculateRingSize(j),fov,img_size)
+					dist2 = get_distance_from_pixels(radius2, self.calculateRingSize(j+1),fov,img_size)
 					distance += (dist1 + dist2 )/2.0
 					
 					

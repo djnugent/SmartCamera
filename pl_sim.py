@@ -6,6 +6,7 @@ from position_vector import PositionVector
 from vehicle_control import veh_control
 from droneapi.lib import VehicleMode, Location, Attitude
 import sc_config
+from pl_util import shift_to_image
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -110,15 +111,6 @@ class PrecisionLandSimulator():
 				veh_control.set_velocity(0,0,0) #still
 
 
-	#shift_to_origin - make the center of the image (0,0)
-	def shift_to_origin(self,pt,width,height):
-		return ((pt[0] - width/2.0),(-1*pt[1] + height/2.0))
-
-
-	#shift_to_image - make the center of the image (imgwidth/2,imgheight/2)
-	def shift_to_image(self,pt,width,height):
-		return ((pt[0] + width/2),(-1*pt[1] + height/2.0))
-
 	#project_3D_to_2D - project a 3d point onto a 2d plane. Covert from world perspective to camera perspective
 	def project_3D_to_2D(self,thetaX,thetaY,thetaZ, aX, aY,aZ, cX, cY, cZ, height, width, fov):
 		dX = math.cos(-thetaY) * (math.sin(-thetaZ)*(cY-aY) + math.cos(-thetaZ)*(cX-aX)) - math.sin(-thetaY)*(aZ-cZ)
@@ -163,7 +155,7 @@ class PrecisionLandSimulator():
 			x , y = self.project_3D_to_2D(thetaX,thetaY,thetaZ, aY, aX, aZ, y, x, cZ,camera_height,camera_width,fov) 
 
 			#shift to camera
-			x , y = self.shift_to_image((x,y),camera_width,camera_height)
+			x , y = shift_to_image((x,y),camera_width,camera_height)
 			newCorners[i] = x,y  
 
 

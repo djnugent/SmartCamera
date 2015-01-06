@@ -1,21 +1,19 @@
+import math
 import time
 import cv2
 import Queue
 import sc_config
-from pl_gui import PrecisionLandGUI as gui
 from sc_video import sc_video
 from sc_dispatcher import sc_dispatcher
 from sc_logger import sc_logger
+from pl_gui import PrecisionLandGUI as gui
+from pl_sim import sim
+from pl_util import shift_to_origin, current_milli_time
 from CircleDetector import CircleDetector
 from vehicle_control import veh_control
-from pymavlink import mavutil
 from droneapi.lib import VehicleMode, Location, Attitude
-from pl_sim import sim
-import math
 from position_vector import PositionVector
 
-
-current_milli_time = lambda: int(time.time() * 1000)
 
 
 
@@ -377,12 +375,12 @@ class PrecisionLand(object):
 		#dont let us take control ever again
 		self.pl_enabled = False
 
-
+		'''
 		# if in GUIDED mode switch back to LOITER
 		if self.vehicle.mode.name == "GUIDED":
 			self.vehicle.mode = VehicleMode("LOITER")
 			self.vehicle.flush()
-
+		'''
 
 
 	#move_to_target - fly aircraft to landing pad
@@ -391,7 +389,7 @@ class PrecisionLand(object):
 
 		
 		#shift origin to center of image
-		x,y = self.shift_to_origin((x,y),self.camera_width,self.camera_height)
+		x,y = shift_to_origin((x,y),self.camera_width,self.camera_height)
 		
 		#this is necessary because the simulator is 100% accurate
 		if(self.simulator):
@@ -505,21 +503,6 @@ class PrecisionLand(object):
 
 		return (x,y)
 
-
-
-	#shift_to_origin - make the center of the image (0,0)
-	def shift_to_origin(self,pt,width,height):
-		return ((pt[0] - width/2.0),(-1*pt[1] + height/2.0))
-
-
-	# wrap_PI - wraps value between -2*PI ~ +2*PI (i.e. -360 ~ +360 degrees) down to -PI ~ PI (i.e. -180 ~ +180 degrees)
-	#angle should be in radians
-	def wrap_PI(self,angle):
-		if (angle > math.pi):
-			return (angle - (math.pi * 2.0))
-		if (angle < -math.pi):
-			return (angle + (math.pi * 2.0))
-		return angle
 
 
 # if starting from mavproxy
