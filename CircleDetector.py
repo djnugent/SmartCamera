@@ -10,7 +10,8 @@ from pl_util import current_milli_time, get_distance_from_pixels
 '''
 TODO:
 make ECCENTRICITY dependent on craftAttitude
-remove pixel to distance and pixel to angle methods; import them
+Clean up code 
+Improve calcDistToTarget method
 '''
 
 

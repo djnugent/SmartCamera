@@ -42,24 +42,22 @@ Temporary Changes:
 '''
 TODO:
 Future:
--have program takeover during landing
+-have program takeover during landing modes(not guided)
 -send warning message to GCS when releasing control
 -implement a landing detector and when to release control
 
 Bugs:
 -add logic for when the vehicle enters from the side of the landing cylinder and underneath the abort point
-	-this does not properly reset right now
+	-will cause the vehicle to climb the second it enters the area is the target is not in sight
+	-will fix this when the vehicle accepts commands in landing modes
+		-will add an intial_approach() method
+		-make logic more accepting of land and RTL
 -add positive and negative check on parameters
 	-inverted on Z axis
--add a start landing method for cleaner restart of landing
 
 Improvements:
 -add varaible descent_rate based on distance to target center and altitude
--add util class
-	-pixel math
-	-distance
-	-time
--make camera operate in landing zone not just landing modes
+-add better target_detected logic(multiple frames required for a lock)
 -add update rate to sc_logger
 -fix project file structure
 -fix Logging printing to console
@@ -119,26 +117,17 @@ class PrecisionLand(object):
 		#The radius of the cylinder surrounding the landing pad
 		self.landing_area_radius = sc_config.config.get_integer('general', 'landing_area_radius', 20)
 
+		#Whether the landing program can be reset after it is disabled
+		self.allow_reset = sc_config.config.get_boolean('general', 'allow_reset', True)
 
-		#how mant times we have attempted landing
-		self.attempts = 0
+		#whether the companion computer has control of the autopilot or not
+		self.in_control = False
 
-		#Last time in millis since we had a valid target
-		self.last_valid_target = 0
+		#Reset state machine
+		self.initialize_landing()
 
-		#State variable climbing to scan for the target
-		self.climbing = False
-
-		#State variable which determines if this program will continue to run
-		self.pl_enabled = True
-
-		#State variable used to represent if autopilot is active
-		self.initial_descent = True
-
-		#State variable which represents a know target in landing area
-		self.target_detected = False
-
-
+		#debugging: 
+		self.kill_camera = False
 
 	def name(self):
 		return "Precision_Land"
@@ -156,11 +145,9 @@ class PrecisionLand(object):
 		if(self.simulator):
 			sim.set_target_location(veh_control.get_home())
 			#sim.set_target_location(Location(0,0,0))
-
-
-
 		else:
 			sc_video.start_capture(self.camera_index)
+
 
 		#create an image processor
 		detector = CircleDetector()
@@ -172,12 +159,35 @@ class PrecisionLand(object):
 		vehicleQueue = Queue.Queue()
 
 	 	while veh_control.is_connected():
-	 		#we have control from autopilot and we are still running the landing program
-			if veh_control.controlling_vehicle() and self.pl_enabled:
+
+	 		if(cv2.waitKey(2) == 1113938):
+				self.kill_camera =  not self.kill_camera
+
+
+	 		#Reintialize the landing program when entering a landing mode
+	 		if veh_control.controlling_vehicle():
+				if not self.in_control:
+					if(self.allow_reset):
+						sc_logger.text(sc_logger.GENERAL, 'Program initialized to start state')
+		 				self.initialize_landing()
+
+				self.in_control = True
+
+			else:
+		 		self.in_control = False
+
+
+
+	 		#we are in the landing zone or in a landing mode and we are still running the landing program
+	 		#just because the program is running does not mean it controls the vehicle
+	 		#i.e. in the landing area but not in a landing mode
+			if (self.inside_landing_area() or self.in_control) and self.pl_enabled:
+
+
+
 		 		#update how often we dispatch a command
 		 		sc_dispatcher.calculate_dispatch_schedule()
 
-		 		
 		 		#get info from autopilot
 		 		location = veh_control.get_location()
 		 		attitude = veh_control.get_attitude()
@@ -190,18 +200,19 @@ class PrecisionLand(object):
 		 		#update simulator
 		 		if(self.simulator):
 		 			sim.refresh_simulator(location,attitude)
-		 			veh_control.set_yaw(90)
+		 			veh_control.set_yaw(180)
 
 		 		# grab an image
 				capStart = current_milli_time()
 				frame = self.get_frame()
 				capStop = current_milli_time()
 
+				if(self.kill_camera):
+					frame[:] = (0,255,0)
+
 		 		
 		 		#update capture time
 		 		sc_dispatcher.update_capture_time(capStop-capStart)
-
-
 
 		 		
 				#Process image
@@ -246,23 +257,49 @@ class PrecisionLand(object):
 		 			self.control(results,attitude,location)
 
 		 	else:
-		 		#sc_logger.text(sc_logger.GENERAL, 'Not in landing mode or Landing disabled')
-		 		#print veh_control.get_mode()
-		 		pass
+		 		if(self.pl_enabled == False):
+		 			sc_logger.text(sc_logger.GENERAL, 'Landing disabled')
+		 			pass
+		 		else:
+		 			sc_logger.text(sc_logger.GENERAL, 'Not in landing mode or Landing Area')
+		 			pass
+
 
 
 
 	 	#terminate program
-	 	sc_logger.text(sc_logger.GENERAL, 'Program Terminated')
+	 	sc_logger.text(sc_logger.GENERAL, 'Vehicle disconnected, Program Terminated')
 	 	if(self.simulator == False):
 	 		sc_video.stop_capture()
+
+
+	#initialize_landing - reset the state machine which controls the flow of the landing routine
+	def initialize_landing(self):
+		
+		#how mant times we have attempted landing
+		self.attempts = 0
+
+		#Last time in millis since we had a valid target
+		self.last_valid_target = 0
+
+		#State variable climbing to scan for the target
+		self.climbing = False
+
+		#State variable which determines if this program will continue to run
+		self.pl_enabled = True
+
+		#State variable used to represent if autopilot is active
+		self.initial_descent = True
+
+		#State variable which represents a know target in landing area
+		self.target_detected = False
 
 
 
 	#control - how to respond to information captured from camera
 	def control(self,target_info,attitude,location):
-		#we have control from autopilot and we are still running the landing program
-		if veh_control.controlling_vehicle() and self.pl_enabled:
+		#we have control from autopilot
+		if veh_control.controlling_vehicle():
 
 			valid_target = False
 
@@ -281,6 +318,7 @@ class PrecisionLand(object):
 				#we have detected a target in landing area
 				if(self.target_detected):
 					self.climbing = False
+					self.initial_descent = False
 
 					#we currently see target
 					if(valid_target):
@@ -295,9 +333,18 @@ class PrecisionLand(object):
 						if(now - self.last_valid_target > self.settle_time):
 							self.target_detected = False
 
-						#temporarily lost target, neutralize velocity
-						veh_control.set_velocity(0,0,0)
-						sc_logger.text(sc_logger.GENERAL, 'Lost Target')
+						#temporarily lost target,
+						#top section of cylinder
+						if(veh_control.get_location().alt > self.abort_height):
+							sc_logger.text(sc_logger.GENERAL, 'Lost Target: Straight Descent')
+
+							#continue descent
+							self.straight_descent()
+						else:
+							sc_logger.text(sc_logger.GENERAL, 'Lost Target: Holding')
+
+							#neutralize velocity
+							veh_control.set_velocity(0,0,0)
 
 
 
@@ -314,14 +361,14 @@ class PrecisionLand(object):
 						if(veh_control.get_location().alt > self.abort_height):
 							#initial descent entering cylinder
 							if(self.initial_descent):
-								sc_logger.text(sc_logger.GENERAL, 'Initial Descent: Autopilot has control')
+								sc_logger.text(sc_logger.GENERAL, 'No Target: Initial Descent')
 
 								#give autopilot control
 								self.autopilot_land()
 
 							#all other attempts prior to intial target detection
 							else:
-								sc_logger.text(sc_logger.GENERAL, 'No target. In straight descent')
+								sc_logger.text(sc_logger.GENERAL, 'No target: Straight descent')
 
 								#straight descent
 								self.straight_descent()
@@ -338,7 +385,7 @@ class PrecisionLand(object):
 
 							#give up and 
 							else:
-								sc_logger.text(sc_logger.GENERAL, 'Out of attempts. Giving up')
+								sc_logger.text(sc_logger.GENERAL, 'Out of attempts: Giving up')
 
 								#give autopilot control
 								self.autopilot_land()
@@ -362,6 +409,10 @@ class PrecisionLand(object):
 
 				self.target_detected = False
 				self.initial_descent = True
+
+		#the program is running but the autopilot is in an invalid mode
+		else:
+			sc_logger.text(sc_logger.GENERAL, 'Not in control of vehicle')
 
 
 	#release_control - give the autopilot full control and leave it in a stable state
@@ -502,6 +553,8 @@ class PrecisionLand(object):
 		y = distance * math.tan(math.radians(thetaY))
 
 		return (x,y)
+
+
 
 
 

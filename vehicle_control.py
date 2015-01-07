@@ -114,7 +114,7 @@ class VehicleControl(object):
 
     #get_landing - get the landing location. Only supports home location
     def get_landing(self):
-        return self.get_home()
+        return self.get_home(True)
 
     #get_home - get the home location for this mission
     def get_home(self, wait_for_arm = False):

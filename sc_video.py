@@ -89,23 +89,6 @@ class SmartCameraVideo:
 
         return self.camera
 
-    # pixels_to_angle_x - converts a number of pixels into an angle in radians 
-    def pixels_to_angle_x(self, num_pixels):
-        return num_pixels * math.radians(self.cam_hfov) / self.img_width
-    
-    # pixels_to_angle_y - converts a number of pixels into an angle in radians 
-    def pixels_to_angle_y(self, num_pixels):
-        return num_pixels * math.radians(self.cam_vfov) / self.img_height
-    
-    # angle_to_pixels_x - converts a horizontal angle (i.e. yaw) to a number of pixels
-    #    angle : angle in radians
-    def angle_to_pixels_x(self, angle):
-        return int(angle * self.img_width / math.radians(self.cam_hfov))
-    
-    # angle_to_pixels_y - converts a vertical angle (i.e. pitch) to a number of pixels
-    #    angle : angle in radians 
-    def angle_to_pixels_y(self, angle):
-        return int(angle * self.img_height / math.radians(self.cam_vfov))
 
     #
     # background image processing routines

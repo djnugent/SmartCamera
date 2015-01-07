@@ -15,7 +15,6 @@ TODO
 Intergrate config file
 
 Long term enhancements: 
-Fix position_to_pixel. Do it properly with vector based math
 Add in textured/tiled background
 dynamic exposure levels / frame rate 
 Add google earth as background

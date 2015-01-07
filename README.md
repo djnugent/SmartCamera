@@ -1,13 +1,17 @@
-SmartCamera
-===========
+#SmartCamera#
+
 
 Use image processing to perform visual navigation for ardupilot
 
-To run a basic example:
-python SmartCamera.py land -c 0
+Currently the program only supports Precision land but was designed to be expanded for other vision guided tasks
 
-Target picture can be found in the repo
+###Run the code###
+1.start sitl
+2.load DroneAPI module
+3.Run
+'''
+api start /home/[your username]/SmartCamera/PrecisionLand.py
+'''
+4.Take off
+5.Enter GUIDED mode to start visual landing
 
-Known issues:
-Config file is not set up properly,
-Lightly tested
