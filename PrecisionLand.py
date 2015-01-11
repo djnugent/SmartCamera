@@ -36,6 +36,7 @@ if controlling the vehicle:
 '''
 Temporary Changes:
 -took out logging ability
+-added kill_camera
 '''
 
 
@@ -120,6 +121,9 @@ class PrecisionLand(object):
 		#Whether the landing program can be reset after it is disabled
 		self.allow_reset = sc_config.config.get_boolean('general', 'allow_reset', True)
 
+		#Run the program no matter what mode or location; Useful for debug purposes
+		self.always_run = sc_config.config.get_boolean('general', 'always_run', True)
+
 		#whether the companion computer has control of the autopilot or not
 		self.in_control = False
 
@@ -181,7 +185,7 @@ class PrecisionLand(object):
 	 		#we are in the landing zone or in a landing mode and we are still running the landing program
 	 		#just because the program is running does not mean it controls the vehicle
 	 		#i.e. in the landing area but not in a landing mode
-			if (self.inside_landing_area() or self.in_control) and self.pl_enabled:
+			if (self.inside_landing_area() or self.in_control or self.always_run) and self.pl_enabled:
 
 
 
@@ -200,7 +204,6 @@ class PrecisionLand(object):
 		 		#update simulator
 		 		if(self.simulator):
 		 			sim.refresh_simulator(location,attitude)
-		 			veh_control.set_yaw(180)
 
 		 		# grab an image
 				capStart = current_milli_time()
@@ -462,10 +465,11 @@ class PrecisionLand(object):
 		#convert to world coordinates
 		target_heading = math.atan2(Y,X) % (2*math.pi)
 		target_heading = (attitude.yaw - target_heading) 
-
 		target_distance = math.sqrt(X**2 + Y**2)
 
-		print round(target_distance,2)
+
+		sc_logger.text(sc_logger.GENERAL, "Distance to target: {0}".format(round(target_distance,2)))
+	
 
 		#calculate speed toward target
 		speed = target_distance * self.dist_to_vel
@@ -483,7 +487,7 @@ class PrecisionLand(object):
 			vz = self.descent_rate
 
 
-		#send velocity commands to target heading
+		#send velocity commands toward target heading
 		veh_control.set_velocity(vx,vy,vz)
 
 
