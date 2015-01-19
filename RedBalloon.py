@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import sc_config
 from sc_logger import sc_logger
 

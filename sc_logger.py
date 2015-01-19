@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import logging
 import sys
 import os

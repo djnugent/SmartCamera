@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 PositionVector class : holds a 3 axis position offset from home in meters in NEU format
                        X = North-South with +ve = North

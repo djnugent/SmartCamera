@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 SmartCamConfig class : handles config for the balloon_finder project
 

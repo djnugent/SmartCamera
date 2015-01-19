@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import time
 import math
 from pymavlink import mavutil

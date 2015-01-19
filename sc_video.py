@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 sc_video.py
 This file includes functions to:
