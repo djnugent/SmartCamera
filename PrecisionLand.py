@@ -148,8 +148,10 @@ class PrecisionLand(object):
 
 		#start a video capture
 		if(self.simulator):
+			sc_logger.text(sc_logger.GENERAL, 'Using simulator')
 			sim.set_target_location(veh_control.get_home())
 			#sim.set_target_location(Location(0,0,0))
+
 		else:
 			sc_video.start_capture(self.camera_index)
 
@@ -263,10 +265,9 @@ class PrecisionLand(object):
 		 	else:
 		 		if(self.pl_enabled == False):
 		 			sc_logger.text(sc_logger.GENERAL, 'Landing disabled')
-		 			pass
 		 		else:
 		 			sc_logger.text(sc_logger.GENERAL, 'Not in landing mode or Landing Area')
-		 			pass
+		 			
 
 
 
@@ -569,7 +570,9 @@ if __name__ == "__builtin__":
 	strat = PrecisionLand()
 
 	# connect to droneapi
+	sc_logger.text(sc_logger.GENERAL, 'Connecting to vehicle...')
 	strat.connect()
+	sc_logger.text(sc_logger.GENERAL, 'Vehicle connected!')
 
 	# run strategy
 	strat.run()

@@ -78,6 +78,9 @@ class SmartCameraVideo:
 
     # get_camera - initialises camera and returns VideoCapture object 
     def get_camera(self,index):
+        sc_logger.text(sc_logger.GENERAL, 'Starting Camera....')
+
+
         # setup video capture
         self.camera = cv2.VideoCapture(index)
         self.camera.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH,self.img_width)
@@ -87,6 +90,8 @@ class SmartCameraVideo:
         if not self.camera.isOpened():
             sc_logger.text(sc_logger.GENERAL,"failed to open camera, exiting!")
             sys.exit(0)
+
+        sc_logger.text(sc_logger.GENERAL, 'Camera Open!')
 
         return self.camera
 
