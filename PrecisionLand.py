@@ -169,7 +169,7 @@ class PrecisionLand(object):
 			'''
 
 	 		#Reintialize the landing program when entering a landing mode
-	 		if veh_control.controlling_vehicle():
+	 		if veh_control.controlling_vehicle() and veh_control.is_armed():
 				if not self.in_control:
 					if(self.allow_reset):
 						sc_logger.text(sc_logger.GENERAL, 'Program initialized to start state')
@@ -308,7 +308,7 @@ class PrecisionLand(object):
 	#control - how to respond to information captured from camera
 	def control(self,target_info,attitude,location):
 		#we have control from autopilot
-		if veh_control.controlling_vehicle():
+		if self.in_control:
 
 			valid_target = False
 
