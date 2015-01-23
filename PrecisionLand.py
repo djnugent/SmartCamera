@@ -55,7 +55,8 @@ Improvements:
 -add update rate to sc_logger
 -fix project file structure
 -fix Logging printing to console
--handle droneapi start up better(location being null at start up, see inside_landing_area())
+-handle droneapi start up better(location being null at start up-> issue using see inside_landing_area() RIGHT at startup)
+-bring back inside_landing_area() as a condition for enterting the main loop
 '''
 
 
@@ -170,7 +171,7 @@ class PrecisionLand(object):
 			'''
 
 	 		#Reintialize the landing program when entering a landing mode
-	 		if veh_control.controlling_vehicle() and veh_control.is_armed():
+	 		if veh_control.controlling_vehicle():
 				if not self.in_control:
 					if(self.allow_reset):
 						sc_logger.text(sc_logger.GENERAL, 'Program initialized to start state')
@@ -186,7 +187,8 @@ class PrecisionLand(object):
 	 		#we are in the landing zone or in a landing mode and we are still running the landing program
 	 		#just because the program is running does not mean it controls the vehicle
 	 		#i.e. in the landing area but not in a landing mode
-			if (self.inside_landing_area() or self.in_control or self.always_run) and self.pl_enabled:
+	 		#FIXME add inside_landing_area() back to conditional
+			if (self.in_control or self.always_run) and self.pl_enabled:
 
 
 
@@ -526,11 +528,7 @@ class PrecisionLand(object):
 
 	#inside_landing_area - determine is we are in a landing zone 0 = False, 1 = True, -1 = below the zone
 	def inside_landing_area(self):
-		#prevent exception on vehpos line
-		if(veh_control.is_armed() == False):
-			return False
 
-		
 		vehPos = PositionVector.get_from_location(veh_control.get_location())
 		landPos = PositionVector.get_from_location(veh_control.get_landing())
 		'''
