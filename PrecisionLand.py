@@ -55,6 +55,7 @@ Improvements:
 -add update rate to sc_logger
 -fix project file structure
 -fix Logging printing to console
+-handle droneapi start up better(location being null at start up, see inside_landing_area())
 '''
 
 
@@ -525,6 +526,10 @@ class PrecisionLand(object):
 
 	#inside_landing_area - determine is we are in a landing zone 0 = False, 1 = True, -1 = below the zone
 	def inside_landing_area(self):
+		#prevent exception on vehpos line
+		if(veh_control.is_armed() == False):
+			return False
+
 		
 		vehPos = PositionVector.get_from_location(veh_control.get_location())
 		landPos = PositionVector.get_from_location(veh_control.get_landing())
