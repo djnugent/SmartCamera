@@ -119,13 +119,16 @@ class VehicleControl(object):
     def get_landing(self):
         return self.get_home(True)
 
+
     #get_home - get the home location for this mission
     def get_home(self, wait_for_arm = False):
 
-        #wait unitl we are armed to grab home position. This will lock up the program.
-        if(wait_for_arm):
+        #wait unitl we are armed to grab the INITIAL home position. This will lock up the program.
+        if(wait_for_arm and self.last_home is None):
+            sc_logger.text(sc_logger.GENERAL, 'Waiting for intial home lock: Requires armed status....')
             while(self.vehicle.armed == False):
-                time.sleep(0.5)
+                time.sleep(0.3)
+            sc_logger.text(sc_logger.GENERAL, 'Got valid intial home location')
 
 
         if(time.time() - self.last_home_call > self.home_update_rate):
