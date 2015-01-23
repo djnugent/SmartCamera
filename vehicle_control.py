@@ -104,6 +104,8 @@ class VehicleControl(object):
             # send command to vehicle
             self.vehicle.send_mavlink(msg)
             self.vehicle.flush()
+            
+            sc_logger.text(sc_logger.AIRCRAFT, 'Sent Vx: {0}, Vy: {1}, Vz: {2}'.format(velocity_x,velocity_y,velocity_z))
 
     #get_location - returns the lat, lon, alt of vehicle
     def get_location(self):

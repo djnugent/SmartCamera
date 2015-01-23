@@ -19,15 +19,8 @@ from position_vector import PositionVector
 
 
 '''
-
-if controlling the vehicle:
-	if we have a valid image:
-		calculate target position
-		fly to target
-	if we dont have a valid image then wait for vehicle to settle
-	if vehicle has settled and there is still no target then climb to increase search area
-	if we climbed and didn't find anything then go to last known target Location
-	only allow the vehicle to do a climb search so many times
+Logic:
+TODO
 
 '''
 
@@ -36,8 +29,7 @@ if controlling the vehicle:
 
 '''
 Temporary Changes:
--took out logging ability
--added kill_camera
+-added kill_camera(commented out)
 '''
 
 
@@ -167,9 +159,11 @@ class PrecisionLand(object):
 
 	 	while veh_control.is_connected():
 
+	 		'''
+	 		#kill camera for testing
 	 		if(cv2.waitKey(2) == 1113938):
 				self.kill_camera =  not self.kill_camera
-
+			'''
 
 	 		#Reintialize the landing program when entering a landing mode
 	 		if veh_control.controlling_vehicle():
@@ -198,6 +192,7 @@ class PrecisionLand(object):
 		 		#get info from autopilot
 		 		location = veh_control.get_location()
 		 		attitude = veh_control.get_attitude()
+
 		 		'''
 		 		#get info from autopilot
 		 		location = Location(0.000009,0,location.alt)
@@ -213,9 +208,10 @@ class PrecisionLand(object):
 				frame = self.get_frame()
 				capStop = current_milli_time()
 
+				'''
 				if(self.kill_camera):
 					frame[:] = (0,255,0)
-
+				'''
 		 		
 		 		#update capture time
 		 		sc_dispatcher.update_capture_time(capStop-capStart)
@@ -238,6 +234,11 @@ class PrecisionLand(object):
 
 		 		#retreive results
 		 		if sc_dispatcher.is_available():
+
+		 			sc_logger.text(sc_logger.GENERAL, 'Frame {0}'.format(self.frame_count))
+		 			self.frame_count += 1
+
+
 		 			#results of image processor
 		 			results = sc_dispatcher.retreive()
 		 			# get image that was passed with the image processor

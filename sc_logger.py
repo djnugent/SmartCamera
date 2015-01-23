@@ -118,7 +118,7 @@ class SmartCameraLogger(object):
 			
 
 			#log text
-			#self.logger.info(msg , extra={'type': level})
+			self.logger.info(msg , extra={'type': level})
 
 
 
