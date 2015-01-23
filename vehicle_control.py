@@ -71,6 +71,9 @@ class VehicleControl(object):
             
             else:
                 return False
+    # is_armed - returns arm status of vehicle
+    def is_armed(self):
+        return self.vehicle.armed
 
     # set_yaw - send condition_yaw mavlink command to vehicle so it points at specified heading (in degrees)
     def set_yaw(self, heading):
@@ -109,9 +112,6 @@ class VehicleControl(object):
 
     #get_location - returns the lat, lon, alt of vehicle
     def get_location(self):
-        #will lock up program until gps lock
-        while(self.vehicle.location is None):
-            pass
         return self.vehicle.location
 
     #get_attitude - returns pitch, roll, and yaw of vehicle
