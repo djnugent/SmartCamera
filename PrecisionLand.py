@@ -120,7 +120,7 @@ class PrecisionLand(object):
 		#whether the companion computer has control of the autopilot or not
 		self.in_control = False
 
-		#how many frames have been processed
+		#how many frames have been captured
 		self.frame_count = 0
 
 		#Reset state machine

@@ -104,7 +104,7 @@ class VehicleControl(object):
             # send command to vehicle
             self.vehicle.send_mavlink(msg)
             self.vehicle.flush()
-            
+
             sc_logger.text(sc_logger.AIRCRAFT, 'Sent Vx: {0}, Vy: {1}, Vz: {2}'.format(velocity_x,velocity_y,velocity_z))
 
     #get_location - returns the lat, lon, alt of vehicle
@@ -125,7 +125,8 @@ class VehicleControl(object):
         #wait unitl we are armed to grab home position. This will lock up the program.
         if(wait_for_arm):
             while(self.vehicle.armed == False):
-                pass
+                time.sleep(0.5)
+
 
         if(time.time() - self.last_home_call > self.home_update_rate):
             self.last_home_call = time.time()
